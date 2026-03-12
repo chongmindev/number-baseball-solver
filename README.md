@@ -26,3 +26,16 @@ git clone https://github.com/chongmindev/number-baseball-solver
 cd number-baseball-solver
 pip install -r requirements.txt
 python app.py
+```
+
+## Method
+
+The solver selects guesses that maximize the Shannon entropy of the feedback distribution:
+
+H(X) = - Σ p(x) log₂ p(x)
+
+Higher entropy guesses partition the remaining solution space more evenly, producing more informative feedback and reducing the number of guesses required to solve the game.
+
+## Author
+Chong Min  
+Stanford University
