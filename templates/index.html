@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Number Baseball Solver</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      margin: 0;
+      background: #0b1220;
+      color: #e2e8f0;
+      font-family: "JetBrains Mono", monospace;
+    }
+
+    header {
+      background: #030712;
+      border-bottom: 1px solid #243041;
+      padding: 25px;
+      text-align: center;
+    }
+
+    header h1 {
+      font-family: "Orbitron", sans-serif;
+      font-size: 34px;
+      margin: 0;
+      color: #f8fafc;
+    }
+
+    header p {
+      margin-top: 6px;
+      color: #94a3b8;
+    }
+
+    .container {
+      max-width: 760px;
+      margin: 40px auto;
+      padding: 0 18px;
+    }
+
+    .card {
+      background: #020617;
+      border: 1px solid #243041;
+      border-radius: 14px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      color: #94a3b8;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .guess-display {
+      text-align: center;
+      font-size: 46px;
+      letter-spacing: 12px;
+      margin: 30px 0;
+      color: #22c55e;
+      font-family: "Orbitron", sans-serif;
+    }
+
+    .analysis-line {
+      text-align: center;
+      margin-top: -12px;
+      margin-bottom: 24px;
+      font-size: 14px;
+      color: #94a3b8;
+      font-family: "JetBrains Mono", monospace;
+    }
+
+    .analysis-line span {
+      color: #e2e8f0;
+    }
+
+    .inputs {
+      display: flex;
+      gap: 30px;
+      margin-bottom: 24px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .picker-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .picker-label {
+      color: #cbd5e1;
+      font-size: 14px;
+    }
+
+    .circle-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .circle-btn {
+      width: 20px;
+      height: 20px;
+      border-radius: 9999px;
+      border: 1px solid #64748b;
+      background: #0f172a;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      padding: 0;
+    }
+
+    .circle-btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .circle-btn.active.strike {
+      background: #22c55e;
+      border-color: #22c55e;
+      box-shadow: 0 0 10px rgba(34, 197, 94, 0.55);
+    }
+
+    .circle-btn.active.ball {
+      background: #f59e0b;
+      border-color: #f59e0b;
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.55);
+    }
+
+    input {
+      background: #020617;
+      border: 1px solid #475569;
+      color: white;
+      padding: 8px;
+      font-size: 14px;
+      width: 48px;
+      border-radius: 8px;
+      font-family: "JetBrains Mono", monospace;
+    }
+
+    button.action {
+      background: #22c55e;
+      border: none;
+      color: black;
+      padding: 10px 18px;
+      font-weight: bold;
+      font-family: "Orbitron", sans-serif;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      border-radius: 8px;
+    }
+
+    button.action:hover {
+      background: #16a34a;
+    }
+
+    button.secondary {
+      background: #334155;
+      color: white;
+    }
+
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .history {
+      margin-top: 25px;
+    }
+
+    .history h3 {
+      font-family: "Orbitron", sans-serif;
+      font-size: 18px;
+      color: #e2e8f0;
+    }
+
+    .history-item {
+      padding: 10px 0;
+      border-bottom: 1px solid #243041;
+    }
+
+    .message {
+      margin-top: 15px;
+      color: #f87171;
+      min-height: 20px;
+      font-size: 13px;
+    }
+
+    .modal-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.82);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      box-sizing: border-box;
+      z-index: 999;
+    }
+
+    .modal {
+      background: #020617;
+      border: 1px solid #334155;
+      padding: 30px;
+      max-width: 540px;
+      width: 100%;
+      border-radius: 14px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+      position: relative;
+    }
+
+    .modal h2 {
+      margin-top: 0;
+      font-family: "Orbitron", sans-serif;
+    }
+
+    .close {
+      position: absolute;
+      top: 16px;
+      right: 18px;
+      cursor: pointer;
+      color: #94a3b8;
+      font-size: 20px;
+      user-select: none;
+    }
+
+    .close:hover {
+      color: #f8fafc;
+    }
+
+    pre {
+      background: #0f172a;
+      border: 1px solid #243041;
+      padding: 12px;
+      border-radius: 10px;
+      overflow: auto;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>⚾ Number Baseball Solver</h1>
+    <p>Entropy Strategy • Statistical Guess Engine</p>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <div class="stat-row">
+        <div>Possible Codes: <b id="remaining">5040</b></div>
+      </div>
+
+      <div class="guess-display" id="guess">----</div>
+
+      <div class="analysis-line">
+        Entropy: <span id="entropy">-</span>
+      </div>
+
+      <div class="inputs">
+        <div class="picker-group">
+          <label class="picker-label">Strikes</label>
+          <div class="circle-row" id="strikeRow">
+            <button type="button" class="circle-btn strike" onclick="setCount('strikes', 1)"></button>
+            <button type="button" class="circle-btn strike" onclick="setCount('strikes', 2)"></button>
+            <button type="button" class="circle-btn strike" onclick="setCount('strikes', 3)"></button>
+            <button type="button" class="circle-btn strike" onclick="setCount('strikes', 4)"></button>
+          </div>
+          <input id="strikes" type="number" readonly value="0">
+        </div>
+
+        <div class="picker-group">
+          <label class="picker-label">Balls</label>
+          <div class="circle-row" id="ballRow">
+            <button type="button" class="circle-btn ball" onclick="setCount('balls', 1)"></button>
+            <button type="button" class="circle-btn ball" onclick="setCount('balls', 2)"></button>
+            <button type="button" class="circle-btn ball" onclick="setCount('balls', 3)"></button>
+            <button type="button" class="circle-btn ball" onclick="setCount('balls', 4)"></button>
+          </div>
+          <input id="balls" type="number" readonly value="0">
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="submitBtn" class="action" onclick="submitFeedback()">Submit</button>
+        <button class="action secondary" onclick="resetGame()">Reset</button>
+      </div>
+
+      <div class="message" id="message"></div>
+
+      <div class="history">
+        <h3>Guess History</h3>
+        <div id="history"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="rulesModal">
+    <div class="modal">
+      <span class="close" onclick="closeRules()">✕</span>
+      <h2>⚾ Number Baseball Rules</h2>
+      <p>Think of a <b>4-digit number</b> using digits <b>0–9</b>.</p>
+      <ul>
+        <li>Digits cannot repeat.</li>
+        <li>The solver will guess your number.</li>
+        <li>You return feedback after each guess.</li>
+      </ul>
+
+      <h3>Feedback</h3>
+      <ul>
+        <li><b>Strike</b> → correct digit in correct position</li>
+        <li><b>Ball</b> → correct digit but wrong position</li>
+      </ul>
+
+      <pre>Secret: 5271
+Guess:  5178
+Result → 2 Strikes, 1 Ball</pre>
+    </div>
+  </div>
+
+  <script>
+    let currentGuess = "";
+
+    function paintRow(id, count, kind) {
+      const buttons = document.querySelectorAll(`#${id} .circle-btn`);
+      buttons.forEach((btn, idx) => {
+        if (idx < count) btn.classList.add("active", kind);
+        else btn.classList.remove("active", kind);
+      });
+    }
+
+    function setCount(field, count) {
+      const input = document.getElementById(field);
+      const current = parseInt(input.value, 10) || 0;
+
+      if (current === count) {
+        input.value = 0;
+        paintRow(field === "strikes" ? "strikeRow" : "ballRow", 0, field === "strikes" ? "strike" : "ball");
+      } else {
+        input.value = count;
+        if (field === "strikes") paintRow("strikeRow", count, "strike");
+        if (field === "balls") paintRow("ballRow", count, "ball");
+      }
+
+      validateCounts();
+    }
+
+    function clearCounts() {
+      document.getElementById("strikes").value = 0;
+      document.getElementById("balls").value = 0;
+      paintRow("strikeRow", 0, "strike");
+      paintRow("ballRow", 0, "ball");
+      validateCounts();
+    }
+
+    function validateCounts() {
+      const s = parseInt(document.getElementById("strikes").value, 10) || 0;
+      const b = parseInt(document.getElementById("balls").value, 10) || 0;
+      const submit = document.getElementById("submitBtn");
+      const msg = document.getElementById("message");
+
+      if (s === 3 && b === 1) {
+        submit.disabled = true;
+        msg.textContent = "Invalid feedback: 3 strikes and 1 ball cannot occur.";
+        return;
+      }
+
+      if (s + b > 4) {
+        submit.disabled = true;
+        msg.textContent = "Invalid feedback: strikes + balls cannot exceed 4.";
+        return;
+      }
+
+      submit.disabled = false;
+      msg.textContent = "";
+    }
+
+    function closeRules() {
+      document.getElementById("rulesModal").style.display = "none";
+    }
+
+    async function loadNextGuess() {
+      const res = await fetch("/next_guess");
+      const data = await res.json();
+
+      if (data.error) {
+        document.getElementById("message").textContent = data.error;
+        return;
+      }
+
+      currentGuess = data.guess;
+      document.getElementById("guess").textContent = data.guess;
+      document.getElementById("remaining").textContent = data.remaining;
+      document.getElementById("entropy").textContent =
+        data.entropy != null ? Number(data.entropy).toFixed(3) : "-";
+    }
+
+    async function submitFeedback() {
+      const strikes = parseInt(document.getElementById("strikes").value, 10) || 0;
+      const balls = parseInt(document.getElementById("balls").value, 10) || 0;
+
+      const history = document.getElementById("history");
+      const row = document.createElement("div");
+      row.className = "history-item";
+      row.textContent = `${currentGuess} → ${strikes}S ${balls}B`;
+      history.prepend(row);
+
+      const res = await fetch("/submit_feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guess: currentGuess, strikes, balls })
+      });
+
+      const data = await res.json();
+
+      if (data.solved) {
+        document.getElementById("message").textContent = "Solved!";
+        return;
+      }
+
+      if (data.error) {
+        document.getElementById("message").textContent = data.error;
+        return;
+      }
+
+      clearCounts();
+      await loadNextGuess();
+    }
+
+    async function resetGame() {
+      await fetch("/reset", { method: "POST" });
+      document.getElementById("history").innerHTML = "";
+      document.getElementById("message").textContent = "";
+      clearCounts();
+      await loadNextGuess();
+    }
+
+    validateCounts();
+    loadNextGuess();
+  </script>
+</body>
+</html>
