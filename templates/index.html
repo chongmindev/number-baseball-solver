@@ -44,6 +44,7 @@
       border-radius: 14px;
       padding: 30px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      position: relative;
     }
 
     .stat-row {
@@ -149,6 +150,7 @@
       letter-spacing: 0.04em;
       cursor: pointer;
       border-radius: 8px;
+      transition: background 0.15s ease, opacity 0.15s ease;
     }
 
     button.action:hover {
@@ -158,6 +160,10 @@
     button.secondary {
       background: #334155;
       color: white;
+    }
+
+    button.secondary:hover {
+      background: #475569;
     }
 
     button:disabled {
@@ -191,6 +197,36 @@
       color: #f87171;
       min-height: 20px;
       font-size: 13px;
+    }
+
+    .loading-line {
+      margin-top: 12px;
+      min-height: 22px;
+      font-size: 13px;
+      color: #93c5fd;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      visibility: hidden;
+    }
+
+    .loading-line.show {
+      visibility: visible;
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid #334155;
+      border-top: 2px solid #60a5fa;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
     }
 
     .modal-bg {
@@ -292,7 +328,12 @@
 
       <div class="controls">
         <button id="submitBtn" class="action" onclick="submitFeedback()">Submit</button>
-        <button class="action secondary" onclick="resetGame()">Reset</button>
+        <button id="resetBtn" class="action secondary" onclick="resetGame()">Reset</button>
+      </div>
+
+      <div class="loading-line" id="loadingLine">
+        <div class="spinner"></div>
+        <span id="loadingText">Calculating next guess...</span>
       </div>
 
       <div class="message" id="message"></div>
@@ -330,6 +371,12 @@ Result → 2 Strikes, 1 Ball</pre>
   <script>
     let currentGuess = "";
 
+    function setMessage(text, color = "#f87171") {
+      const msg = document.getElementById("message");
+      msg.style.color = color;
+      msg.textContent = text;
+    }
+
     function paintRow(id, count, kind) {
       const buttons = document.querySelectorAll(`#${id} .circle-btn`);
       buttons.forEach((btn, idx) => {
@@ -344,7 +391,11 @@ Result → 2 Strikes, 1 Ball</pre>
 
       if (current === count) {
         input.value = 0;
-        paintRow(field === "strikes" ? "strikeRow" : "ballRow", 0, field === "strikes" ? "strike" : "ball");
+        paintRow(
+          field === "strikes" ? "strikeRow" : "ballRow",
+          0,
+          field === "strikes" ? "strike" : "ball"
+        );
       } else {
         input.value = count;
         if (field === "strikes") paintRow("strikeRow", count, "strike");
@@ -362,26 +413,51 @@ Result → 2 Strikes, 1 Ball</pre>
       validateCounts();
     }
 
+    function setLoading(isLoading, text = "Calculating next guess...") {
+      const loadingLine = document.getElementById("loadingLine");
+      const loadingText = document.getElementById("loadingText");
+      const submitBtn = document.getElementById("submitBtn");
+      const resetBtn = document.getElementById("resetBtn");
+
+      loadingText.textContent = text;
+
+      if (isLoading) {
+        loadingLine.classList.add("show");
+        submitBtn.disabled = true;
+        resetBtn.disabled = true;
+      } else {
+        loadingLine.classList.remove("show");
+        resetBtn.disabled = false;
+        validateCounts();
+      }
+    }
+
     function validateCounts() {
       const s = parseInt(document.getElementById("strikes").value, 10) || 0;
       const b = parseInt(document.getElementById("balls").value, 10) || 0;
       const submit = document.getElementById("submitBtn");
-      const msg = document.getElementById("message");
+
+      if (document.getElementById("loadingLine").classList.contains("show")) {
+        submit.disabled = true;
+        return;
+      }
 
       if (s === 3 && b === 1) {
         submit.disabled = true;
-        msg.textContent = "Invalid feedback: 3 strikes and 1 ball cannot occur.";
+        setMessage("Invalid feedback: 3 strikes and 1 ball cannot occur.");
         return;
       }
 
       if (s + b > 4) {
         submit.disabled = true;
-        msg.textContent = "Invalid feedback: strikes + balls cannot exceed 4.";
+        setMessage("Invalid feedback: strikes + balls cannot exceed 4.");
         return;
       }
 
       submit.disabled = false;
-      msg.textContent = "";
+      if (!document.getElementById("message").textContent.includes("Solved in")) {
+        setMessage("", "#f87171");
+      }
     }
 
     function closeRules() {
@@ -389,19 +465,29 @@ Result → 2 Strikes, 1 Ball</pre>
     }
 
     async function loadNextGuess() {
-      const res = await fetch("/next_guess");
-      const data = await res.json();
+      setLoading(true, "Calculating next guess...");
+      setMessage("");
 
-      if (data.error) {
-        document.getElementById("message").textContent = data.error;
-        return;
+      try {
+        const res = await fetch("/next_guess");
+        const data = await res.json();
+
+        if (data.error) {
+          setMessage(data.error);
+          return;
+        }
+
+        currentGuess = data.guess;
+        document.getElementById("guess").textContent = data.guess;
+        document.getElementById("remaining").textContent = data.remaining;
+        document.getElementById("entropy").textContent =
+          data.entropy != null ? Number(data.entropy).toFixed(3) : "-";
+      } catch (err) {
+        setMessage("Failed to load next guess.");
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
-
-      currentGuess = data.guess;
-      document.getElementById("guess").textContent = data.guess;
-      document.getElementById("remaining").textContent = data.remaining;
-      document.getElementById("entropy").textContent =
-        data.entropy != null ? Number(data.entropy).toFixed(3) : "-";
     }
 
     async function submitFeedback() {
@@ -414,34 +500,59 @@ Result → 2 Strikes, 1 Ball</pre>
       row.textContent = `${currentGuess} → ${strikes}S ${balls}B`;
       history.prepend(row);
 
-      const res = await fetch("/submit_feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ guess: currentGuess, strikes, balls })
-      });
-
-      const data = await res.json();
-
-      if (data.solved) {
-        document.getElementById("message").textContent = "Solved!";
-        return;
+      if (strikes !== 4) {
+        setLoading(true, "Updating possibilities...");
       }
 
-      if (data.error) {
-        document.getElementById("message").textContent = data.error;
-        return;
-      }
+      try {
+        const res = await fetch("/submit_feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ guess: currentGuess, strikes, balls })
+        });
 
-      clearCounts();
-      await loadNextGuess();
+        const data = await res.json();
+
+        if (data.solved) {
+          setLoading(false);
+          const guessCount = document.querySelectorAll(".history-item").length;
+          setMessage(`Solved in ${guessCount} guesses!`, "#22c55e");
+          clearCounts();
+          return;
+        }
+
+        if (data.error) {
+          setMessage(data.error);
+          return;
+        }
+
+        clearCounts();
+        await loadNextGuess();
+      } catch (err) {
+        setMessage("Failed to submit feedback.");
+        console.error(err);
+      } finally {
+        if (strikes !== 4) {
+          setLoading(false);
+        }
+      }
     }
 
     async function resetGame() {
-      await fetch("/reset", { method: "POST" });
-      document.getElementById("history").innerHTML = "";
-      document.getElementById("message").textContent = "";
-      clearCounts();
-      await loadNextGuess();
+      setLoading(true, "Resetting game...");
+
+      try {
+        await fetch("/reset", { method: "POST" });
+        document.getElementById("history").innerHTML = "";
+        setMessage("");
+        clearCounts();
+        await loadNextGuess();
+      } catch (err) {
+        setMessage("Failed to reset game.");
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
     }
 
     validateCounts();
